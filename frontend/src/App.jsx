@@ -8,7 +8,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="sidebar">
-        <h1>AIVOA</h1>
+        <h1>PharmaComplaint AI</h1>
         <div className="subtitle">Complaint Management</div>
         <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
           Dashboard

@@ -5,7 +5,7 @@ load_dotenv()
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://aivoa:aivoa@localhost:5432/aivoa_complaints",
+    "postgresql://pharmacomplaint:pharmacomplaint@localhost:5432/pharmacomplaint_complaints",
 )
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")

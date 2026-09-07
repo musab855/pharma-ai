@@ -74,7 +74,7 @@ export default function Copilot() {
   return (
     <div>
       <div className="page-header">
-        <h2>AIVOA Copilot</h2>
+        <h2>PharmaComplaint AI Copilot</h2>
         {complaint && (
           <div style={{ display: "flex", gap: 8 }}>
             <SeverityBadge severity={complaint.severity} />
@@ -137,7 +137,7 @@ export default function Copilot() {
 
         {/* RIGHT: Chat copilot */}
         <div className="card" style={{ display: "flex", flexDirection: "column", height: 560 }}>
-          <label style={{ marginBottom: 0 }}>AIVOA Copilot</label>
+          <label style={{ marginBottom: 0 }}>PharmaComplaint AI Copilot</label>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>
             Drop complaint files or paste text below.
           </div>

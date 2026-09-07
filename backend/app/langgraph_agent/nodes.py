@@ -204,7 +204,7 @@ def compose_reply(state: CopilotState) -> CopilotState:
     else:
         try:
             state["reply"] = call_llm(
-                "You are AIVOA Copilot, a pharmaceutical QMS complaint assistant. Answer briefly and helpfully.",
+                "You are PharmaComplaint AI Copilot, a pharmaceutical QMS complaint assistant. Answer briefly and helpfully.",
                 state["message"],
             ).strip()
         except Exception as e:

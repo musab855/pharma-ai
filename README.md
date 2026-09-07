@@ -1,4 +1,4 @@
-# AIVOA – AI-Powered Customer Complaint Management System
+# PharmaComplaint AI – AI-Powered Customer Complaint Management System
 
 Round 1 Full Stack Developer Assessment submission, built for the pharmaceutical
 manufacturing (API/FDF) industry.
@@ -134,7 +134,7 @@ docker compose up --build
 
 - Frontend: http://localhost:3000
 - Backend docs (Swagger): http://localhost:8000/docs
-- Postgres: localhost:5432 (user/pass/db: `aivoa`/`aivoa`/`aivoa_complaints`)
+- Postgres: localhost:5432 (user/pass/db: `pharmacomplaint`/`pharmacomplaint`/`pharmacomplaint_complaints`)
 
 ### 3. Run manually (without Docker)
 

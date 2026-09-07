@@ -6,7 +6,7 @@ from .routers import complaints, copilot
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="AIVOA Customer Complaint Management System")
+app = FastAPI(title="PharmaComplaint AI Customer Complaint Management System")
 
 app.add_middleware(
     CORSMiddleware,

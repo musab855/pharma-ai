@@ -5,9 +5,9 @@ services:
     image: postgres:16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: aivoa
-      POSTGRES_PASSWORD: aivoa
-      POSTGRES_DB: aivoa_complaints
+      POSTGRES_USER: pharmacomplaint
+      POSTGRES_PASSWORD: pharmacomplaint
+      POSTGRES_DB: pharmacomplaint_complaints
     ports:
       - "5432:5432"
     volumes:
@@ -19,7 +19,7 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DATABASE_URL: postgresql://aivoa:aivoa@db:5432/aivoa_complaints
+      DATABASE_URL: postgresql://pharmacomplaint:pharmacomplaint@db:5432/pharmacomplaint_complaints
     ports:
       - "8000:8000"
     depends_on:
