@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, engine
-from .routers import complaints, copilot
+from .routers import complaints, copilot, transcription
 
 Base.metadata.create_all(bind=engine)
 
@@ -18,6 +18,7 @@ app.add_middleware(
 
 app.include_router(complaints.router)
 app.include_router(copilot.router)
+app.include_router(transcription.router)
 
 
 @app.get("/api/health")

@@ -19,10 +19,64 @@ not a manual form. The user describes or pastes a complaint (or uploads a
 document) in the copilot chat; the AI extracts structured fields, fills the
 form, and runs an initial risk assessment.
 
-## AI Copilot — Tools
+## v2 — Live Medical Transcription
+
+Added in v2: a real-time medical consultation transcription feature that
+captures live audio, runs Voice Activity Detection (VAD) to filter silence,
+transcribes speech via Groq's Whisper API, and generates a structured clinical
+summary using an LLM.
+
+### How it works
+
+1. **Microphone capture** — browser `getUserMedia` captures mono audio at 16kHz.
+2. **Voice Activity Detection (VAD)** — WebRTC VAD detects speech segments in
+   real-time so silence and background noise are never sent to the ASR model.
+   Speech aggressiveness is set to level 1 (gentle) with a 1s silence timeout
+   to avoid cutting off mid-sentence.
+3. **Whisper ASR** — each detected speech segment is sent to Groq's
+   `whisper-large-v3` model for transcription. Transcripts stream back to the
+   UI in real-time as you speak.
+4. **Clinical analysis** — on demand (button click), the full transcript is
+   sent to the LLM which extracts structured medical information and generates
+   a clinical summary.
+
+### Clinical fields extracted
+
+| Field | Content |
+|-------|---------|
+| Patient details | Name, age, sex, identifiers |
+| Chief complaint | Primary reason for visit |
+| History of present illness | Onset, duration, progression |
+| Symptoms | Positives + negatives separately |
+| Past medical history | Prior conditions, surgeries |
+| Medication history | Current meds, dosages, adherence, allergies |
+| Clinical observations | Vitals, exam findings |
+| Assessment | Provisional diagnosis, differentials |
+| Plan | Investigations, prescriptions, advice, follow-up |
+| Clinical summary | 2-3 sentence summary for the medical record |
+
+### API endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `WS` | `/api/transcription/ws` | Live streaming transcription (binary audio → text) |
+| `POST` | `/api/transcription/analyze` | Analyze completed transcript → clinical data |
+
+### Demo flow
+
+1. Navigate to **Live Transcription** from the sidebar.
+2. Click **Start Mic** and speak naturally — VAD auto-chunks your speech.
+3. Transcript appears in real-time with word/chunk counters.
+4. Click **Process Transcript with AI** to generate the clinical summary.
+5. Review the structured clinical summary on the right panel.
+6. Click **Copy to Prescription** to copy the formatted summary to clipboard.
+
+## v1 — AI Copilot Complaint Management
+
+### AI Copilot — Tools
 
 The copilot is a **LangGraph** agent with intent-based routing between three
-tools, all backed by **Groq's `gemma2-9b-it`** (fallback `llama-3.3-70b-versatile`):
+tools, all backed by **Groq's `openai/gpt-oss-20b`** (fallback `openai/gpt-oss-120b`):
 
 1. **Log Complaint tool** — triggered when there's no existing complaint yet.
    Extracts structured fields (customer, product, batch, mfg/expiry dates,
@@ -66,23 +120,28 @@ record, shown on both the copilot form and the complaint detail page.
 
 ```
 frontend (React + Redux Toolkit)
-  Copilot page — chat (right) drives a read-only auto-filled form (left)
   Dashboard — list + status
+  Copilot page — chat (right) drives a read-only auto-filled form (left)
   ComplaintDetail — workflow transitions + root cause/CAPA (investigation stage)
-   │  REST (axios)
+  Transcription — live mic → transcript + clinical summary (v2)
+   │  REST (axios) + WebSocket
    ▼
 backend (FastAPI)
    │  SQLAlchemy ORM
    ▼
 Postgres  (complaints, complaint_history)
    │
-   ▼
-LangGraph agent (backend/app/langgraph_agent)
-   classify_intent → [extract_fields | apply_edit | compose_reply]
-                    → completeness_check → risk_assessment → summarize → compose_reply
+   ├── LangGraph agent (backend/app/langgraph_agent)
+   │    classify_intent → [extract_fields | apply_edit | compose_reply]
+   │                     → completeness_check → risk_assessment → summarize → compose_reply
+   │
+   ├── Transcription (backend/app/transcription)
+   │    WebRTC VAD → Groq Whisper ASR → LLM clinical analysis
    │
    ▼
-Groq API (gemma2-9b-it, fallback llama-3.3-70b-versatile)
+Groq API
+   ├── LLM: openai/gpt-oss-20b (fallback openai/gpt-oss-120b)
+   └── ASR: whisper-large-v3
 ```
 
 ### LangGraph graph (`backend/app/langgraph_agent/graph.py`)
@@ -113,7 +172,9 @@ from the user's point of view.
 | Frontend   | React 18 + Redux Toolkit + React Router       |
 | Backend    | Python FastAPI                                |
 | AI Agent   | LangGraph                                     |
-| LLM        | Groq `gemma2-9b-it` (fallback `llama-3.3-70b-versatile`) |
+| LLM        | Groq `openai/gpt-oss-20b` (fallback `openai/gpt-oss-120b`) |
+| ASR        | Groq `whisper-large-v3`                       |
+| VAD        | WebRTC VAD (`webrtcvad`)                      |
 | Database   | PostgreSQL (SQLAlchemy ORM)                   |
 | Font       | Google Inter                                  |
 
@@ -156,6 +217,8 @@ npm start
 
 ## Demo Flow
 
+### v1 — AI Copilot
+
 1. Go to **Log Complaint (AI Copilot)**. Click **Try Sample Complaint** (or
    type/paste your own, e.g. *"Apollo Pharmacy reported discolored capsules
    in Amoxicillin capsules 500mg. Batch number AMX240602, manufacturing date
@@ -168,13 +231,25 @@ npm start
    form, and re-runs the risk assessment.
 4. Try `sample_data/sample_complaint_2_incomplete.txt` (paste its contents)
    to see the completeness checker flag missing fields.
-5. Try **📎 Upload Document** with a `.pdf` or `.txt` complaint file to
-   see the **Document Extraction tool** populate the same form directly 
+5. Try **Upload Document** with a `.pdf` or `.txt` complaint file to
+   see the **Document Extraction tool** populate the same form directly
    from a document.
 6. From the complaint's detail page (via the Dashboard), move it through
    **New → Under Review → Investigation → CAPA → Closed**, and add Root
    Cause / CAPA notes (these investigation fields are edited manually, since
    they come later in the workflow, after the AI-driven intake stage).
+
+### v2 — Live Transcription
+
+1. Navigate to **Live Transcription** from the sidebar.
+2. Click **Start Mic** — Chrome will prompt for microphone permission. Click Allow.
+3. Speak naturally — VAD auto-detects speech and filters silence.
+4. Watch the transcript appear in real-time with word/chunk counters.
+5. Click **Process Transcript with AI** to generate the clinical summary.
+6. Review the structured clinical summary (patient details, chief complaint,
+   symptoms, assessment, plan, etc.) on the right panel.
+7. Click **Copy to Prescription** to copy the formatted summary to clipboard.
+8. Click **Save Recording** to download the transcript as a `.txt` file.
 
 ## Repository Structure
 
@@ -188,24 +263,34 @@ backend/
     routers/
       complaints.py               List/get/status/manual investigation fields
       copilot.py                  POST /api/copilot/message, /api/copilot/upload
+      transcription.py            WebSocket + REST for live transcription (v2)
     langgraph_agent/
       state.py                    CopilotState (shared agent state)
       nodes.py                    classify_intent / extract_fields / apply_edit /
                                    completeness_check / risk_assessment / summarize /
                                    compose_reply
       graph.py                    Conditional routing between the 3 tools
-      groq_client.py               Groq API wrapper with fallback model
+      groq_client.py              Groq API wrapper with fallback model
+    transcription/
+      vad.py                      WebRTC VAD wrapper for streaming speech detection
+      whisper_service.py          Groq Whisper API client (no local model)
+      clinical_analysis.py        LLM-based clinical data extraction
 frontend/
   src/
     store/
       copilotSlice.js             Chat messages + live draft complaint
       complaintsSlice.js          Dashboard list + status/investigation edits
+      transcriptionSlice.js       Live transcription state (v2)
     api/client.js                 Axios API client
     pages/
-      Dashboard.jsx                List + severity/status
-      Copilot.jsx                  Chat-driven intake/edit (Log/Edit/Upload)
-      ComplaintDetail.jsx           Workflow transitions + investigation notes
-    components/StatusBadge.jsx
+      Dashboard.jsx               List + severity/status
+      Copilot.jsx                 Chat-driven intake/edit (Log/Edit/Upload)
+      ComplaintDetail.jsx         Workflow transitions + investigation notes
+      Transcription.jsx           Live medical transcription (v2)
+    components/
+      AudioRecorder.jsx           Mic capture, VAD, WebSocket streaming (v2)
+      ClinicalSummary.jsx         Structured clinical summary display (v2)
+      StatusBadge.jsx             Severity/status badges
 sample_data/                      Sample complaint text files (1 complete, 1 incomplete)
 docker-compose.yml
 ```
@@ -219,4 +304,6 @@ docker-compose.yml
   justification) since it's core to the demoed copilot flow. Duplicate
   detection, root-cause recommendation, and CAPA recommendation are natural
   next additions on the same `CopilotState`/graph.
-
+- v2 adds **Live Medical Transcription** with WebRTC VAD, Groq Whisper ASR,
+  and LLM-based clinical analysis. All AI processing runs on Groq's cloud
+  servers — no local GPU/RAM required.

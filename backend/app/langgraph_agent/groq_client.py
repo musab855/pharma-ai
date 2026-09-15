@@ -14,7 +14,7 @@ def _strip_fences(text: str) -> str:
 
 
 def call_llm(system_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
-    """Calls Groq gemma2-9b-it, falls back to llama-3.3-70b-versatile on failure."""
+    """Calls Groq openai/gpt-oss-20b, falls back to openai/gpt-oss-120b on failure."""
     if _client is None:
         raise RuntimeError("GROQ_API_KEY not configured")
 

@@ -3,6 +3,7 @@ import { Routes, Route, NavLink } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Copilot from "./pages/Copilot";
 import ComplaintDetail from "./pages/ComplaintDetail";
+import Transcription from "./pages/Transcription";
 
 export default function App() {
   return (
@@ -16,6 +17,9 @@ export default function App() {
         <NavLink to="/copilot" className={({ isActive }) => (isActive ? "active" : "")}>
           Log Complaint (AI Copilot)
         </NavLink>
+        <NavLink to="/transcription" className={({ isActive }) => (isActive ? "active" : "")}>
+          Live Transcription
+        </NavLink>
       </div>
       <div className="main">
         <Routes>
@@ -23,6 +27,7 @@ export default function App() {
           <Route path="/copilot" element={<Copilot />} />
           <Route path="/copilot/:id" element={<Copilot />} />
           <Route path="/complaints/:id" element={<ComplaintDetail />} />
+          <Route path="/transcription" element={<Transcription />} />
         </Routes>
       </div>
     </div>
