@@ -25,6 +25,7 @@ from pydantic import BaseModel
 
 from ..transcription.vad import VADDetector, FRAME_SIZE, SAMPLE_RATE
 from ..transcription.whisper_service import transcribe
+from ..transcription.medical_terms import correct_medical_terms
 from ..transcription.clinical_analysis import analyze_transcript
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,8 @@ async def transcription_ws(websocket: WebSocket):
                     # Flush any remaining speech segment
                     remaining = vad.force_flush()
                     if remaining is not None and len(remaining) > 0:
-                        text = await asyncio.to_thread(transcribe, remaining)
+                        raw_text = await asyncio.to_thread(transcribe, remaining)
+                        text = await asyncio.to_thread(correct_medical_terms, raw_text) if raw_text else ""
                         if text:
                             await websocket.send_json({
                                 "type": "transcript",
@@ -112,7 +114,8 @@ async def transcription_ws(websocket: WebSocket):
 
                     segment = vad.check_segment()
                     if segment is not None and len(segment) > 0:
-                        text = await asyncio.to_thread(transcribe, segment)
+                        raw_text = await asyncio.to_thread(transcribe, segment)
+                        text = await asyncio.to_thread(correct_medical_terms, raw_text) if raw_text else ""
                         if text:
                             await websocket.send_json({
                                 "type": "transcript",
