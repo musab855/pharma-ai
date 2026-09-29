@@ -71,6 +71,23 @@ summary using an LLM.
 5. Review the structured clinical summary on the right panel.
 6. Click **Copy to Prescription** to copy the formatted summary to clipboard.
 
+## v2.1 — Transcription Accuracy Improvements
+
+Based on a 431-word live consultation evaluation (~8.5/10 accuracy), three
+improvements were added:
+
+1. **Medical term correction** — a post-processing dictionary
+   (`medical_terms.py`) fixes common Whisper misrecognitions before the text
+   reaches the UI or the clinical analysis (e.g. *extensional dyspnea →
+   exertional dyspnea*, *spitting bomb puffer → pitting edema*, *H4-U4 →
+   HFpEF*, *age 15 age 16 → age 58*). Falls back to an LLM correction pass
+   only when garbled patterns remain.
+2. **Age sanity check** — the clinical analysis prompt now flags implausible
+   demographics (e.g. age 15 with heart failure/diabetes/hypertension) as
+   *"age may be transcription error — verify with patient"*.
+3. **Token limit fix** — clinical analysis `max_tokens` raised from 1024 →
+   4096 so long transcripts produce complete, valid JSON summaries.
+
 ## v1 — AI Copilot Complaint Management
 
 ### AI Copilot — Tools
@@ -180,35 +197,95 @@ from the user's point of view.
 
 ## Setup
 
-### 1. Environment variables
+### Prerequisites
+
+- **Docker Desktop** — https://www.docker.com/products/docker-desktop
+- **Git**
+- A **Groq API key** — free at https://console.groq.com (used for both the LLM and Whisper ASR)
+
+### Step 1 — Clone the repository
+
+```bash
+git clone https://github.com/musab855/pharma-ai.git
+cd pharma-ai
+```
+
+### Step 2 — Configure environment variables
 
 ```bash
 cp backend/.env.example backend/.env
-# then edit backend/.env and set GROQ_API_KEY=<your key from console.groq.com>
 ```
 
-### 2. Run with Docker (recommended)
+Then edit `backend/.env` and set your Groq API key:
+
+```
+GROQ_API_KEY=gsk_your_key_here
+GROQ_MODEL=openai/gpt-oss-20b
+GROQ_FALLBACK_MODEL=openai/gpt-oss-120b
+```
+
+### Step 3 — Start Docker Desktop
+
+Open Docker Desktop and wait until the status light turns **green** (30–60 seconds). Verify with:
+
+```bash
+docker ps
+```
+
+### Step 4 — Run the project
 
 ```bash
 docker compose up --build
 ```
 
-- Frontend: http://localhost:3000
-- Backend docs (Swagger): http://localhost:8000/docs
-- Postgres: localhost:5432 (user/pass/db: `pharmacomplaint`/`pharmacomplaint`/`pharmacomplaint_complaints`)
+- **First build takes 5–10 minutes** (downloading images + dependencies). Subsequent runs are instant (cached).
+- Use `docker compose up` (no `--build`) on later runs.
 
-### 3. Run manually (without Docker)
+### Step 5 — Verify it's working
+
+Open these three URLs:
+
+| URL | Expected result |
+|-----|-----------------|
+| `http://localhost:8000/api/health` | `{"status":"ok"}` |
+| `http://localhost:3000` | Dashboard with complaints table |
+| `http://localhost:3000/transcription` | Live transcription page |
+
+### Ports
+
+| Service  | Port  |
+|----------|-------|
+| Frontend | 3000  |
+| Backend  | 8000  |
+| Postgres | 5432  |
+
+If port 5432 or 8000 is already in use (another app or project), edit
+`docker-compose.yml` and change the **left side** of the port mapping
+(e.g. `5433:5432` → `8001:8000`), then `docker compose up -d --force-recreate`.
+
+### Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `port is already allocated` | Another container is using the port. Find it: `docker ps`. Stop it or change the port in `docker-compose.yml`. |
+| Microphone blocked in browser | Click the mic icon in the address bar → **Allow**, then refresh the page. Must access via `localhost`, not an IP. |
+| `All Groq models failed` | Verify your API key in `backend/.env` and that the model names match (`openai/gpt-oss-20b` / `openai/gpt-oss-120b`). |
+| `Analysis unavailable` | Long transcripts need `max_tokens=4096` in `backend/app/langgraph_agent/groq_client.py`. |
+| Frontend shows old code after edit | Hard refresh: **Ctrl+Shift+R** (or open Incognito). Docker volume mounts sync source files to the dev server. |
+| Containers start but backend crashes | Check logs: `docker compose logs backend --tail=50` |
+
+### Run without Docker (alternative)
 
 **Backend**
 ```bash
 cd backend
-python -m venv venv && source venv/bin/activate
+python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-# make sure Postgres is running locally and DATABASE_URL in .env points to it
+# Start PostgreSQL locally (or use a cloud DB) and set DATABASE_URL in .env
 uvicorn app.main:app --reload
 ```
 
-**Frontend**
+**Frontend** (separate terminal)
 ```bash
 cd frontend
 npm install
@@ -274,6 +351,7 @@ backend/
     transcription/
       vad.py                      WebRTC VAD wrapper for streaming speech detection
       whisper_service.py          Groq Whisper API client (no local model)
+      medical_terms.py            Dictionary + LLM correction of Whisper errors (v2.1)
       clinical_analysis.py        LLM-based clinical data extraction
 frontend/
   src/
