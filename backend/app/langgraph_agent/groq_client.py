@@ -29,7 +29,7 @@ def call_llm(system_prompt: str, user_prompt: str, json_mode: bool = False) -> s
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.2,
-                max_tokens=1024,
+                max_tokens=4096,
             )
             return resp.choices[0].message.content
         except Exception as e:  # noqa
